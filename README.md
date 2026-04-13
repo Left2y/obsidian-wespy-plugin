@@ -208,4 +208,3 @@ release/obsidian-wechat-importer.zip
 ## 仓库
 
 - GitHub: https://github.com/Left2y/obsidian-wespy-plugin
-- Gitea: http://v5.pgrm.top:11467/left2y/obsidian-wespy-plugin
