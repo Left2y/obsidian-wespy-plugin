@@ -57,7 +57,6 @@
 Release 地址：
 
 - GitHub: https://github.com/Left2y/obsidian-wespy-plugin/releases/tag/v1.0.3
-- Gitea: http://v5.pgrm.top:11467/left2y/obsidian-wespy-plugin/releases/tag/v1.0.3
 
 如果你是直接覆盖旧版本，请重启 Obsidian，或者至少在第三方插件里关闭再重新打开 `WeChat Offline Importer`。Obsidian 不会自动重新加载已经运行中的插件代码。
 
