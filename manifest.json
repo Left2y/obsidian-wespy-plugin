@@ -1,0 +1,10 @@
+{
+	"id": "obsidian-wechat-importer",
+	"name": "WeChat Offline Importer",
+	"version": "1.0.3",
+	"minAppVersion": "1.5.7",
+	"description": "Import WeChat articles into Obsidian and download images into the vault for offline reading.",
+	"author": "OpenAI Codex",
+	"authorUrl": "https://openai.com",
+	"isDesktopOnly": true
+}
