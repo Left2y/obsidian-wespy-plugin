@@ -1,7 +1,8 @@
-import { App, MarkdownView, TFile, requestUrl } from "obsidian";
-import { ensureFolderExists, getParentFolder, sanitizePathSegment } from "../utils/path-utils";
+import { App, MarkdownView, TFile, normalizePath, requestUrl } from "obsidian";
+import { ensureFolderExists, getAvailableBinaryPath, getParentFolder, sanitizePathSegment } from "../utils/path-utils";
 import type { LocalizeMarkdownResult } from "../types";
 
+const DEFAULT_ATTACHMENT_FOLDER = "_attachments";
 const DEFAULT_USER_AGENT =
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Safari/537.36";
 const WECHAT_USER_AGENT =
@@ -114,10 +115,24 @@ function getImageSource(imageElement: Element): string {
 	return "";
 }
 
+function getAttachmentFolderPath(notePath: string, attachmentFolder: string): string {
+	const noteFolder = getParentFolder(notePath);
+	const attachmentSubfolder = normalizePath(attachmentFolder.trim() || DEFAULT_ATTACHMENT_FOLDER)
+		.split("/")
+		.map((segment) => segment.trim())
+		.filter(Boolean)
+		.map((segment) => sanitizePathSegment(segment))
+		.filter((segment) => segment && segment !== "." && segment !== "..")
+		.join("/");
+
+	return normalizePath(noteFolder && attachmentSubfolder ? `${noteFolder}/${attachmentSubfolder}` : attachmentSubfolder || noteFolder);
+}
+
 async function downloadAttachment(
 	app: App,
 	imageUrl: string,
 	notePath: string,
+	attachmentFolder: string,
 	index: number,
 	hint: string,
 	cache: Map<string, DownloadedAttachment>
@@ -140,7 +155,8 @@ async function downloadAttachment(
 
 	const extension = guessFileExtension(imageUrl, getHeader(response.headers, "content-type"));
 	const fileStem = sanitizePathSegment(hint || `image ${String(index).padStart(3, "0")}`);
-	const attachmentPath = await app.fileManager.getAvailablePathForAttachment(`${fileStem}.${extension}`, notePath);
+	const attachmentFolderPath = getAttachmentFolderPath(notePath, attachmentFolder);
+	const attachmentPath = await getAvailableBinaryPath(app, attachmentFolderPath, `${fileStem}.${extension}`);
 	await ensureFolderExists(app, getParentFolder(attachmentPath));
 
 	const file = await app.vault.createBinary(attachmentPath, response.arrayBuffer);
@@ -150,7 +166,7 @@ async function downloadAttachment(
 	return downloadedAttachment;
 }
 
-export async function localizeImagesInElement(app: App, root: ParentNode, notePath: string): Promise<number> {
+export async function localizeImagesInElement(app: App, root: ParentNode, notePath: string, attachmentFolder: string): Promise<number> {
 	const imageElements = Array.from(root.querySelectorAll("img"));
 	if (imageElements.length === 0) {
 		return 0;
@@ -167,7 +183,7 @@ export async function localizeImagesInElement(app: App, root: ParentNode, notePa
 
 		const altText = imageElement.getAttribute("alt") || imageElement.getAttribute("data-alt") || "";
 		try {
-			const attachment = await downloadAttachment(app, imageUrl, notePath, index, altText || `image ${index}`, cache);
+			const attachment = await downloadAttachment(app, imageUrl, notePath, attachmentFolder, index, altText || `image ${index}`, cache);
 			imageElement.setAttribute("data-obsidian-embed", attachment.embedMarkdown);
 			imageElement.setAttribute("src", attachment.file.path);
 			imageElement.removeAttribute("srcset");
@@ -180,7 +196,7 @@ export async function localizeImagesInElement(app: App, root: ParentNode, notePa
 	return cache.size;
 }
 
-export async function localizeExternalImagesInMarkdown(app: App, sourceFile: TFile, markdown: string): Promise<LocalizeMarkdownResult> {
+export async function localizeExternalImagesInMarkdown(app: App, sourceFile: TFile, markdown: string, attachmentFolder: string): Promise<LocalizeMarkdownResult> {
 	let updatedMarkdown = markdown;
 	const cache = new Map<string, DownloadedAttachment>();
 	let index = 1;
@@ -194,7 +210,7 @@ export async function localizeExternalImagesInMarkdown(app: App, sourceFile: TFi
 		}
 
 		try {
-			const attachment = await downloadAttachment(app, imageUrl, sourceFile.path, index, altText || `image ${index}`, cache);
+			const attachment = await downloadAttachment(app, imageUrl, sourceFile.path, attachmentFolder, index, altText || `image ${index}`, cache);
 			updatedMarkdown = updatedMarkdown.replace(fullMatch, attachment.embedMarkdown);
 			index += 1;
 		} catch {
@@ -210,7 +226,7 @@ export async function localizeExternalImagesInMarkdown(app: App, sourceFile: TFi
 		}
 
 		try {
-			const attachment = await downloadAttachment(app, imageUrl, sourceFile.path, index, `image ${index}`, cache);
+			const attachment = await downloadAttachment(app, imageUrl, sourceFile.path, attachmentFolder, index, `image ${index}`, cache);
 			updatedMarkdown = updatedMarkdown.replace(fullMatch, attachment.embedMarkdown);
 			index += 1;
 		} catch {
@@ -224,7 +240,7 @@ export async function localizeExternalImagesInMarkdown(app: App, sourceFile: TFi
 	};
 }
 
-export async function localizeExternalImagesInActiveNote(app: App): Promise<number> {
+export async function localizeExternalImagesInActiveNote(app: App, attachmentFolder: string): Promise<number> {
 	const activeView = app.workspace.getActiveViewOfType(MarkdownView);
 	const sourceFile = activeView?.file;
 
@@ -233,7 +249,7 @@ export async function localizeExternalImagesInActiveNote(app: App): Promise<numb
 	}
 
 	const originalMarkdown = await app.vault.read(sourceFile);
-	const result = await localizeExternalImagesInMarkdown(app, sourceFile, originalMarkdown);
+	const result = await localizeExternalImagesInMarkdown(app, sourceFile, originalMarkdown, attachmentFolder);
 
 	if (result.downloadedImageCount > 0 && result.content !== originalMarkdown) {
 		await app.vault.modify(sourceFile, result.content);
@@ -242,9 +258,9 @@ export async function localizeExternalImagesInActiveNote(app: App): Promise<numb
 	return result.downloadedImageCount;
 }
 
-export async function localizeExternalImagesInFile(app: App, sourceFile: TFile): Promise<number> {
+export async function localizeExternalImagesInFile(app: App, sourceFile: TFile, attachmentFolder: string): Promise<number> {
 	const originalMarkdown = await app.vault.read(sourceFile);
-	const result = await localizeExternalImagesInMarkdown(app, sourceFile, originalMarkdown);
+	const result = await localizeExternalImagesInMarkdown(app, sourceFile, originalMarkdown, attachmentFolder);
 
 	if (result.downloadedImageCount > 0 && result.content !== originalMarkdown) {
 		await app.vault.modify(sourceFile, result.content);

@@ -231,14 +231,14 @@ function preserveExistingFrontmatter(existingMarkdown: string, newBody: string, 
 	return `${frontmatterMatch[0].trimEnd()}\n${newBody.trim()}\n`;
 }
 
-async function buildArticleBodyMarkdown(app: App, notePath: string, article: ParsedWeChatArticle): Promise<{ body: string; downloadedImageCount: number }> {
+async function buildArticleBodyMarkdown(app: App, notePath: string, attachmentFolder: string, article: ParsedWeChatArticle): Promise<{ body: string; downloadedImageCount: number }> {
 	const articleDocument = new DOMParser().parseFromString(`<div id="wechat-root">${article.contentHtml}</div>`, "text/html");
 	const contentRoot = articleDocument.querySelector("#wechat-root");
 	if (!(contentRoot instanceof HTMLElement)) {
 		throw new Error("Failed to prepare the article body for conversion.");
 	}
 
-	const downloadedImageCount = await localizeImagesInElement(app, contentRoot, notePath);
+	const downloadedImageCount = await localizeImagesInElement(app, contentRoot, notePath, attachmentFolder);
 	const body = createTurndownService().turndown(contentRoot.innerHTML);
 	return { body, downloadedImageCount };
 }
@@ -256,7 +256,7 @@ export async function importWeChatArticle(app: App, settings: WeChatImporterSett
 
 	await ensureFolderExists(app, getParentFolder(notePath));
 
-	const { body, downloadedImageCount } = await buildArticleBodyMarkdown(app, notePath, article);
+	const { body, downloadedImageCount } = await buildArticleBodyMarkdown(app, notePath, settings.attachmentFolder, article);
 	const noteFile = await app.vault.create(notePath, buildNoteMarkdown(article, body));
 
 	if (settings.openNoteAfterImport) {
@@ -270,9 +270,9 @@ export async function importWeChatArticle(app: App, settings: WeChatImporterSett
 	};
 }
 
-export async function rebuildWeChatArticleFile(app: App, file: TFile, rawUrl: string): Promise<RebuildResult> {
+export async function rebuildWeChatArticleFile(app: App, file: TFile, rawUrl: string, attachmentFolder: string): Promise<RebuildResult> {
 	const article = await fetchParsedWeChatArticle(rawUrl);
-	const { body, downloadedImageCount } = await buildArticleBodyMarkdown(app, file.path, article);
+	const { body, downloadedImageCount } = await buildArticleBodyMarkdown(app, file.path, attachmentFolder, article);
 	const existingMarkdown = await app.vault.read(file);
 	await app.vault.modify(file, preserveExistingFrontmatter(existingMarkdown, body, article));
 

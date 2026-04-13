@@ -3,6 +3,7 @@ import type WeChatImporterPlugin from "./main";
 
 export interface WeChatImporterSettings {
 	noteFolder: string;
+	attachmentFolder: string;
 	openNoteAfterImport: boolean;
 	prefixPublishedDate: boolean;
 	autoLocalizeOnCreate: boolean;
@@ -12,6 +13,7 @@ export interface WeChatImporterSettings {
 
 export const DEFAULT_SETTINGS: WeChatImporterSettings = {
 	noteFolder: "Clippings/WeChat",
+	attachmentFolder: "_attachments",
 	openNoteAfterImport: true,
 	prefixPublishedDate: true,
 	autoLocalizeOnCreate: true,
@@ -39,6 +41,17 @@ export class WeChatImporterSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.noteFolder)
 				.onChange(async (value) => {
 					this.plugin.settings.noteFolder = normalizePath(value.trim() || DEFAULT_SETTINGS.noteFolder);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName("Image attachment subfolder")
+			.setDesc("Downloaded images are saved under this subfolder next to the note.")
+			.addText((text) => text
+				.setPlaceholder("_attachments")
+				.setValue(this.plugin.settings.attachmentFolder)
+				.onChange(async (value) => {
+					this.plugin.settings.attachmentFolder = normalizePath(value.trim() || DEFAULT_SETTINGS.attachmentFolder);
 					await this.plugin.saveSettings();
 				}));
 

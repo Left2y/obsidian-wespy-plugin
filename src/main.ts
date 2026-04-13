@@ -18,6 +18,7 @@ export default class WeChatImporterPlugin extends Plugin {
 		await this.loadSettings();
 		await this.logDebug("loaded", {
 			version: this.manifest.version,
+			attachmentFolder: this.settings.attachmentFolder,
 			autoLocalizeOnCreate: this.settings.autoLocalizeOnCreate,
 			rebuildWeChatClipsFromSource: this.settings.rebuildWeChatClipsFromSource,
 			autoLocalizeFolders: this.settings.autoLocalizeFolders
@@ -56,7 +57,7 @@ export default class WeChatImporterPlugin extends Plugin {
 			name: "Download external images in current note",
 			callback: async () => {
 				try {
-					const downloadedImageCount = await localizeExternalImagesInActiveNote(this.app);
+					const downloadedImageCount = await localizeExternalImagesInActiveNote(this.app, this.settings.attachmentFolder);
 					if (downloadedImageCount === 0) {
 						new Notice("No external images found in the current note.");
 						return;
@@ -157,7 +158,7 @@ export default class WeChatImporterPlugin extends Plugin {
 			const sourceUrl = extractWeChatSourceUrl(markdown);
 			if (sourceUrl && this.settings.rebuildWeChatClipsFromSource) {
 				this.suppressAutoLocalization(file.path);
-				const result = await rebuildWeChatArticleFile(this.app, file, sourceUrl);
+				const result = await rebuildWeChatArticleFile(this.app, file, sourceUrl, this.settings.attachmentFolder);
 				this.clippedNoteCandidates.delete(file.path);
 				await this.logDebug("auto-localize rebuilt note", {
 					path: file.path,
@@ -170,7 +171,7 @@ export default class WeChatImporterPlugin extends Plugin {
 			}
 
 			this.suppressAutoLocalization(file.path);
-			const downloadedImageCount = await localizeExternalImagesInFile(this.app, file);
+			const downloadedImageCount = await localizeExternalImagesInFile(this.app, file, this.settings.attachmentFolder);
 			if (downloadedImageCount > 0) {
 				this.clippedNoteCandidates.delete(file.path);
 			}
@@ -281,7 +282,7 @@ export default class WeChatImporterPlugin extends Plugin {
 			}
 
 			this.suppressAutoLocalization(activeFile.path);
-			const result = await rebuildWeChatArticleFile(this.app, activeFile, sourceUrl);
+			const result = await rebuildWeChatArticleFile(this.app, activeFile, sourceUrl, this.settings.attachmentFolder);
 			await this.logDebug("manual rebuild completed", {
 				path: activeFile.path,
 				title: result.title,

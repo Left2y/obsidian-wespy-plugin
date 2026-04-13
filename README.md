@@ -101,6 +101,7 @@ tags:
 进入 `设置 -> WeChat Offline Importer` 可以配置：
 
 - `Import folder`：手动导入新文章时的默认保存目录。
+- `Image attachment subfolder`：图片附件子目录，默认 `_attachments`，会创建在笔记所在目录下面。
 - `Prefix published date`：文件名是否加上发布日期前缀。
 - `Open note after import`：导入完成后是否自动打开笔记。
 - `Auto-localize clipped notes`：是否自动处理 Web Clipper 新建或修改的笔记。
@@ -114,7 +115,7 @@ tags:
 1. 用 Web Clipper 正常剪藏。
 2. 保存到 `📚 Sources` 或 `Clippings`。
 3. 等几秒钟，插件会自动处理。
-4. 处理成功后，笔记里的图片应该变成本地 Obsidian embed，例如 `![[image 1.webp]]`。
+4. 处理成功后，笔记里的图片应该变成本地 Obsidian embed，图片文件会保存在笔记目录下的 `_attachments` 子目录。
 
 ### 已经剪藏过但图片丢失的旧笔记
 
@@ -172,9 +173,21 @@ tags:
 
 ## 本地图片保存在哪里
 
-插件使用 Obsidian 的附件路径逻辑创建图片文件，所以实际位置取决于你的 Obsidian 附件设置。
+插件默认把图片保存到笔记所在目录下的 `_attachments` 子目录，不再跟随 Obsidian 的全局附件位置设置。
 
-如果你的 vault 附件默认存到当前文件夹、统一附件目录或指定子目录，插件会跟随 Obsidian 的规则。
+例如笔记是：
+
+```text
+memory/2026-04-11.md
+```
+
+图片会保存到：
+
+```text
+memory/_attachments/
+```
+
+如果你想换目录名，可以在插件设置里的 `Image attachment subfolder` 修改。这里支持多级相对路径，例如 `assets/wechat` 会保存到笔记目录下的 `assets/wechat/`。
 
 ## 当前限制
 

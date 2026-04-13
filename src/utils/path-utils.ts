@@ -61,3 +61,30 @@ export async function getAvailableNotePath(app: App, folderPath: string, baseNam
 		counter += 1;
 	}
 }
+
+export async function getAvailableBinaryPath(app: App, folderPath: string, fileName: string): Promise<string> {
+	const normalizedFolderPath = folderPath.trim() ? normalizePath(folderPath) : "";
+	const normalizedFileName = normalizePath(fileName).split("/").filter(Boolean).join(" ");
+	const initialPath = normalizePath(normalizedFolderPath ? `${normalizedFolderPath}/${normalizedFileName}` : normalizedFileName);
+
+	if (!app.vault.getAbstractFileByPath(initialPath)) {
+		return initialPath;
+	}
+
+	const dotIndex = normalizedFileName.lastIndexOf(".");
+	const baseName = dotIndex > 0 ? normalizedFileName.slice(0, dotIndex) : normalizedFileName;
+	const extension = dotIndex > 0 ? normalizedFileName.slice(dotIndex) : "";
+
+	let counter = 2;
+	while (true) {
+		const candidatePath = normalizePath(
+			normalizedFolderPath ? `${normalizedFolderPath}/${baseName} ${counter}${extension}` : `${baseName} ${counter}${extension}`
+		);
+
+		if (!app.vault.getAbstractFileByPath(candidatePath)) {
+			return candidatePath;
+		}
+
+		counter += 1;
+	}
+}
